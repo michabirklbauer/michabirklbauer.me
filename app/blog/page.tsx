@@ -10,8 +10,8 @@ export const revalidate = 60;
 export default async function BlogPage() {
 
   const featured = allBlogs.find((blog) => blog.slug === "girlfriend")!;
-  const top2 = allBlogs.find((blog) => blog.slug === "p2")!;
-  const top3 = allBlogs.find((blog) => blog.slug === "p3")!;
+  const top2 = allBlogs.find((blog) => blog.slug === "ai")!;
+  const top3 = allBlogs.find((blog) => blog.slug === "privacy")!;
   const sorted = allBlogs
     .filter((b) => b.published)
     .filter(
