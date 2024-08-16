@@ -8,12 +8,6 @@ import { Eye } from "lucide-react";
 
 export const revalidate = 60;
 export default async function BlogPage() {
-  const views = (
-    allBlogs.map((b) => ["pageviews", "blog", b.slug].join(":"))
-  ).reduce((acc, v, i) => {
-    acc[allBlogs[i].slug] = v ?? 0;
-    return acc;
-  }, {} as Record<string, number>);
 
   const featured = allBlogs.find((blog) => blog.slug === "girlfriend")!;
   const top2 = allBlogs.find((blog) => blog.slug === "p2")!;
@@ -85,7 +79,7 @@ export default async function BlogPage() {
           <div className="flex flex-col w-full gap-8 mx-auto border-t border-gray-900/10 lg:mx-0 lg:border-t-0 ">
             {[top2, top3].map((blog) => (
               <Card key={blog.slug}>
-                <Article blog={blog} views={views[blog.slug] ?? 0} />
+                <Article blog={blog} />
               </Card>
             ))}
           </div>
@@ -98,7 +92,7 @@ export default async function BlogPage() {
               .filter((_, i) => i % 3 === 0)
               .map((blog) => (
                 <Card key={blog.slug}>
-                  <Article blog={blog} views={views[blog.slug] ?? 0} />
+                  <Article blog={blog} />
                 </Card>
               ))}
           </div>
@@ -107,7 +101,7 @@ export default async function BlogPage() {
               .filter((_, i) => i % 3 === 1)
               .map((blog) => (
                 <Card key={blog.slug}>
-                  <Article blog={blog} views={views[blog.slug] ?? 0} />
+                  <Article blog={blog} />
                 </Card>
               ))}
           </div>
@@ -116,7 +110,7 @@ export default async function BlogPage() {
               .filter((_, i) => i % 3 === 2)
               .map((blog) => (
                 <Card key={blog.slug}>
-                  <Article blog={blog} views={views[blog.slug] ?? 0} />
+                  <Article blog={blog} />
                 </Card>
               ))}
           </div>

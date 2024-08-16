@@ -3,10 +3,9 @@ import Link from "next/link";
 
 type Props = {
 	blog: Blog;
-	views: number;
 };
 
-export const Article: React.FC<Props> = ({ blog, views }) => {
+export const Article: React.FC<Props> = ({ blog }) => {
 	return (
 		<Link href={`/blog/${blog.slug}`}>
 			<article className="p-4 md:p-8">
