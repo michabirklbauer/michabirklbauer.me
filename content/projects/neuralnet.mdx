@@ -1,0 +1,26 @@
+---
+title: NeuralNet
+description: A "from scratch" implementation of classic feed-forward neural networks for binary/multi-class classification using ReLU activations, cross entropy loss and sigmoid/softmax output.
+date: "2022-12-30"
+url: https://michabirklbauer.github.io/neuralnet/
+published: true
+repository: michabirklbauer/neuralnet
+---
+
+```python
+NN = NeuralNetwork(input_size = train_data.shape[1])
+NN.add_layer(32, "relu")
+NN.add_layer(16, "relu")
+NN.add_layer(10, "softmax")
+NN.compile(loss = "categorical crossentropy")
+NN.summary()
+```
+
+<div style={{ textAlign: 'justify' }}>
+
+An educational "from scratch" implementation of classic feed-forward neural networks for binary/multi-class classification using ReLU activations, cross entropy loss and sigmoid/softmax output.
+Implemented in python using numpy.  
+
+Can be run online with Google Colab -> [here](https://colab.research.google.com/github/michabirklbauer/neuralnet/blob/master/neuralnet-colab.ipynb).
+
+</div>
