@@ -1,0 +1,71 @@
+---
+title: Solving big problems on small computers
+description: GPU-accelerated proteome-wide non-cleavable crosslink identification using sparse matrix multiplication
+date: "2024-09-08"
+url: https://doi.org/10.1101/2024.09.03.610962
+published: true
+repository:
+---
+
+![Slide1](https://github.com/michabirklbauer/michabirklbauer.me/raw/master/cdn/blog/matrixxlms/1.jpg)
+
+### Introduction: What am I even doing?
+
+<div style={{ textAlign: 'justify' }}>
+
+Ever since I started studying bioinformatics it was always hard to explain to people what exactly a bioinformatician does, after all, truly grasping the concept of bioinformatics
+requires both at least some understanding about informatics and computational biology. The easy answer always has been "Yeah, I am solving some medical problems on the computer",
+however, that hardly paints the correct picture. Nowadays even more so. I think most of my friends actually have no idea what I am doing for a living, despite just nodding in
+acknowledgement whenever I try to explain. In this blog post I want to go into a bit more details what I have been up to over the past year.
+
+</div>
+
+### Introduction: Mass Spectrometry-based Proteomics
+
+<div style={{ textAlign: 'justify' }}>
+
+Most of you probably know (or have at least heard) that I am doing research in the field of protein-protein cross-linking, and more specifically, write software for the identification
+of crosslinks from mass spectrometry data. Now, to explain what all that means we have to start with the basics - or rather with mass spectrometry-based proteomics (which is not so basic
+but necessary for understanding cross-linking). For the sake of understanding I will drastically simplify everything in this blog post, so please don't come at me and scream "Fake News"
+if any of the things are not exactly as described in established literature. For those of you who really want to get down to business, I can recommend this review on bottom-up proteomics
+that explains everything in-depth: [Comprehensive Overview of Bottom-Up Proteomics Using Mass Spectrometry](https://doi.org/10.1021/acsmeasuresciau.3c00068)
+
+</div>
+
+<div style={{ textAlign: 'justify' }}>
+
+But let's try to paint this in simpler strokes: Proteins are the building blocks of life, they control basically everything that happens in our bodies. Mass spectrometry-based proteomics is
+all about studying these proteins, more specifically identifying and quantifying proteins in samples of interest. Imagine you are taking a blood sample from a patient and you want to know
+which proteins are in there, you can analyze the sample with a mass spectrometer which does some magic and it will give you some data (the mass spectra) in return. However, now comes the
+tricky part (not saying that the previous steps are not also complicated, but I am not really involved with that so I won't focus on it), the mass spectra don't directly tell us which
+proteins are in our sample, we need software that can do that!
+
+</div>
+
+<div style={{ textAlign: 'justify' }}>
+
+You can imagine this problem of identifying proteins from these mass spectra as a big game of memory - you know, the game where you have to find two identical cards. Except that instead
+of 10 - 20 pairs it's more like ten thousand to a few million pairs, they don't exactly match and there might not be a pair for every card and for some cards there might be multiple.
+Not so easy anymore, I guess. How this exactly works is that we can take all known proteins that are encoded by the human genome and we can more or less calculate how a mass spectrum
+for parts of them might look like. Subsequently, what's left is that you compare your experimentally measured mass spectra to the calculated ones and if you find something that matches
+really well, chances are good that this is one of the proteins in your sample! Pretty cool, huh? My supervisor wrote a software that does exactly that, except of course in a way more
+sophisticated way which is why it performs really, really well. You can read more about that here: [MS Amanda](https://doi.org/10.1021/pr500202e)
+
+</div>
+
+### Introduction: Cross-linking Mass Spectrometry
+
+<div style={{ textAlign: 'justify' }}>
+
+In cross-linking mass spectrometry the question is less about which proteins are in the sample but more about which proteins interact in our sample. This is facilitated by adding a chemical
+reagent called the crosslinker to your sample, which you can imagine like a chain that connects two proteins that are close enough together. The tricky part in analyzing mass spectra from
+cross-linking experiments is that instead of having (parts of) one protein in your spectrum, you suddenly have (parts of) two proteins in your spectrum that are connected by this chain
+(crosslinker)(you can read more about cross-linking here: [Cleavable Cross-Linkers and Mass Spectrometry for the Ultimate Task of Profiling Protein–Protein Interaction Networks in Vivo](https://doi.org/10.1021/acs.jproteome.0c00583)).
+Now that is where my work is coming in, my project is about writing software that can tell you exactly that: Looking at a mass spectrum, which (parts of) proteins are in there and connected
+(and therefore interact with each other)?
+
+You can see a graphical depiction of cross-linking below. Usually the two connected parts of the protein(s) are called the alpha and beta peptide.
+
+</div>
+
+![Slide2](https://github.com/michabirklbauer/michabirklbauer.me/raw/master/cdn/blog/matrixxlms/1.jpg)
