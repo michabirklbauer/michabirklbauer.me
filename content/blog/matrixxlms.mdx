@@ -7,7 +7,11 @@ published: true
 repository:
 ---
 
+<div align='center'>
+
 ![Slide1](https://github.com/michabirklbauer/michabirklbauer.me/raw/master/cdn/blog/matrixxlms/1.jpg)
+
+</div>
 
 ### Introduction: What am I even doing?
 
@@ -18,6 +22,8 @@ requires both at least some understanding about informatics and computational bi
 however, that hardly paints the correct picture. Nowadays even more so. I think most of my friends actually have no idea what I am doing for a living, despite just nodding in
 acknowledgement whenever I try to explain. In this blog post I want to go into a bit more details what I have been up to over the past year.
 
+_Disclaimer: This whole blog post is based on a presentation I gave earlier this year. If you want to see me talk live about science stuff, check out
+"[Micha Birklbauer: Tour Dates](https://www.youtube.com/watch?v=dQw4w9WgXcQ)"._
 </div>
 
 ### Introduction: Mass Spectrometry-based Proteomics
@@ -28,7 +34,7 @@ Most of you probably know (or have at least heard) that I am doing research in t
 of crosslinks from mass spectrometry data. Now, to explain what all that means we have to start with the basics - or rather with mass spectrometry-based proteomics (which is not so basic
 but necessary for understanding cross-linking). For the sake of understanding I will drastically simplify everything in this blog post, so please don't come at me and scream "Fake News"
 if any of the things are not exactly as described in established literature. For those of you who really want to get down to business, I can recommend this review on bottom-up proteomics
-that explains everything in-depth: [Comprehensive Overview of Bottom-Up Proteomics Using Mass Spectrometry](https://doi.org/10.1021/acsmeasuresciau.3c00068)
+that explains everything in-depth: [Comprehensive Overview of Bottom-Up Proteomics Using Mass Spectrometry](https://doi.org/10.1021/acsmeasuresciau.3c00068).
 
 </div>
 
@@ -49,7 +55,7 @@ of 10 - 20 pairs it's more like ten thousand to a few million pairs, they don't 
 Not so easy anymore, I guess. How this exactly works is that we can take all known proteins that are encoded by the human genome and we can more or less calculate how a mass spectrum
 for parts of them might look like. Subsequently, what's left is that you compare your experimentally measured mass spectra to the calculated ones and if you find something that matches
 really well, chances are good that this is one of the proteins in your sample! Pretty cool, huh? My supervisor wrote a software that does exactly that, except of course in a way more
-sophisticated way which is why it performs really, really well. You can read more about that here: [MS Amanda](https://doi.org/10.1021/pr500202e)
+sophisticated way which is why it performs really, really well. You can read more about that here: [MS Amanda](https://doi.org/10.1021/pr500202e).
 
 </div>
 
@@ -64,8 +70,107 @@ cross-linking experiments is that instead of having (parts of) one protein in yo
 Now that is where my work is coming in, my project is about writing software that can tell you exactly that: Looking at a mass spectrum, which (parts of) proteins are in there and connected
 (and therefore interact with each other)?
 
-You can see a graphical depiction of cross-linking below. Usually the two connected parts of the protein(s) are called the alpha and beta peptide.
+You can see a graphical depiction of cross-linking below. Usually the two connected parts of the protein(s) are called the alpha and beta peptide - where "peptide" refers to a smaller fragment of
+a protein.
 
 </div>
 
-![Slide2](https://github.com/michabirklbauer/michabirklbauer.me/raw/master/cdn/blog/matrixxlms/1.jpg)
+<div align='center'>
+
+![Slide2](https://github.com/michabirklbauer/michabirklbauer.me/raw/master/cdn/blog/matrixxlms/2.jpg)
+
+</div>
+
+### The Problem
+
+<div style={{ textAlign: 'justify' }}>
+
+In classical bottom-up mass spectrometry-based proteomics we usually know the mass of the particular peptide that we look for in a mass spectrum. This drastically simplifies the identification
+process as we only have to consider peptides with a similar mass from our database. Contrary, in cross-linking - or more specifically - in non-cleavable cross-linking, which uses a distinct kind
+of cross-linking reagent, we only know the mass of the whole cross-linked entity but not the mass of the individual peptides.
+
+</div>
+
+<div align='center'>
+
+![Slide3](https://github.com/michabirklbauer/michabirklbauer.me/raw/master/cdn/blog/matrixxlms/3.jpg)
+
+</div>
+
+<div style={{ textAlign: 'justify' }}>
+
+Identification therefore becomes a combinatorial problem as we now have to consider every combination of peptides in our database. For a database of _n_ peptides the number of combinations _c_
+to consider can be calculated as follows:
+
+</div>
+
+<div align='center'>
+
+![Formula](https://github.com/michabirklbauer/michabirklbauer.me/raw/master/cdn/blog/matrixxlms/combinations.svg)
+
+</div>
+
+<div style={{ textAlign: 'justify' }}>
+
+For large _n_ this problem can be regarded as O(n<sup>2</sup>) complexity, hence why this is usually referred to as the _n_-squared problem in cross-linking.
+
+</div>
+
+<div align='center'>
+
+![Slide4](https://github.com/michabirklbauer/michabirklbauer.me/raw/master/cdn/blog/matrixxlms/4.jpg)
+
+</div>
+
+<div style={{ textAlign: 'justify' }}>
+
+If we consider the human proteome as our protein database, the number of peptides is around `2 749 058` and when you plug this number into the formula above you get
+`3 778 661 318 211` possible combinations. This is already a very large number that we can hardly imagine anymore. If you were to store all of these combinations on a computer using a very
+simple data structure consisting of two 32-bit integers to denote the two peptides and one 64-bit integer for the index you would end up with almost 55 terabytes (TB) of storage needed. For
+funzies I put a picture below what that would mean in terms of hardware requirements to store such an amount of data.
+
+</div>
+
+<div align='center'>
+
+![Slide5](https://github.com/michabirklbauer/michabirklbauer.me/raw/master/cdn/blog/matrixxlms/5.jpg)
+
+</div>
+
+<div style={{ textAlign: 'justify' }}>
+
+Needless to say that this is unfeasible. Over the past year I have now been working on how to solve this problem and bring identification of non-cleavable crosslinks to everyone! 😉
+
+</div>
+
+### Tackling the _n_-squared Problem
+
+<div align='center'>
+
+![Slide6](https://github.com/michabirklbauer/michabirklbauer.me/raw/master/cdn/blog/matrixxlms/6.jpg)
+
+</div>
+
+<div style={{ textAlign: 'justify' }}>
+
+Approaching problems like this always starts with going through the five stages of grief and crying is probably just part of doing a PhD. Anyway, after you reach acceptance it's
+time to stop breaking down and start breaking down the problem and searching for solutions. It was very obvious that in this case the "solution" would be, on the one hand to limit the number of
+combinations, and on the other hand to implement a very fast search algorithm that can deal with a high number of combinations. Both of these things are easier said than done, after all there is a
+reason why this challenge has still mostly remained unaddressed after all these years of non-cleavable cross-linking - which is also why non-cleavable cross-linking has been limited to small
+scale experiments.
+
+</div>
+
+### The Idea
+
+<div style={{ textAlign: 'justify' }}>
+
+Let's start with the problem of limiting the number of combinations to consider for identification: If only we could identify one of the two cross-linked peptides, the number of possible
+combinations that we need to address would shrink to _n_ instead of _n_-squared. Therefore, to-do number one: Identify one of the two peptides.
+
+Secondly, implementing a search algorithm capable of processing very large amounts of combinations: This was less straightforward, I remember that back then I was thinking about which
+technologies have been super optimized over the past decades and which of them I could maybe apply to the problem at hand. My initial gut feeling was to break down the search into a process
+of matrix multiplications, an operation which is highly optimized, very widely adopted in computer science and also drives today's artificial intelligence hype. Moreover, today's compute devices easily
+can handle matrices with several thousands if not millions of rows and columns, ideal for processing large numbers of combinations.
+
+</div>
