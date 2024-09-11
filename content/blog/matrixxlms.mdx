@@ -173,4 +173,125 @@ technologies have been super optimized over the past decades and which of them I
 of matrix multiplications, an operation which is highly optimized, very widely adopted in computer science and also drives today's artificial intelligence hype. Moreover, today's compute devices easily
 can handle matrices with several thousands if not millions of rows and columns, ideal for processing large numbers of combinations.
 
+The question remained, how would you represent peptides and mass spectra as peptides? For that I'd recommend reading the [pre-print](https://doi.org/10.1101/2024.09.03.610962)
+which explains this in detail.
+
+Like all ideas this one also started on paper, you can see the first draft below! The core idea of the algorithm is still the same today, even though many parts changed from its inception
+to the final implementation that is now incorporated in MS Annika 3.0 - the crosslink search engine I am developing. I'll go over the final implementation of the algorithm towards the end
+of this blog post, but for now I want to focus on the journey of how I got there!
+
 </div>
+
+<div align='center'>
+
+![Slide7](https://github.com/michabirklbauer/michabirklbauer.me/raw/master/cdn/blog/matrixxlms/7.jpg)
+
+</div>
+
+### The Quest of Choosing the Right Technology Stack
+
+<div style={{ textAlign: 'justify' }}>
+
+After pitching the idea to my supervisor and agreeing that it was worth a try, the next step was to think about the technical implementation which essentially boiled down to the question of
+how to do the matrix multiplication. Now to put this into perspective, it is worth noting that [MS Annika](https://github.com/hgb-bin-proteomics/MSAnnika) -
+the crosslink search engine we already built - is implemented in C# because it
+functions as a plugin node for Thermo Fisher's mass spectrometry software called
+[Proteome Discoverer](https://www.thermofisher.com/at/en/home/industrial/mass-spectrometry/liquid-chromatography-mass-spectrometry-lc-ms/lc-ms-software/multi-omics-data-analysis/proteome-discoverer-software.html).
+However, C# is a managed language that is unfortunately not the fastest, meaning there were several things to consider:
+
+- Use a C# native matrix multiplication: Easy to implement and easy to interface with the already available MS Annika code, but probably at the cost of performance
+- Use a matrix multiplication implementation that is not C# native: Potentially much faster but interfacing with the existing MS Annika codebase might be a problem
+
+I ended up testing several different approaches (as outlined below), both in C# and other languages.
+
+</div>
+
+<div align='center'>
+
+![Slide8](https://github.com/michabirklbauer/michabirklbauer.me/raw/master/cdn/blog/matrixxlms/8.jpg)
+
+</div>
+
+<div style={{ textAlign: 'justify' }}>
+
+Let's start off with the C# native implementations, the first thing I tested was a numeric algebra library called [Math.NET](https://www.mathdotnet.com/): Now Math.NET was quite straightforward
+to use, supported sparse matrices out of the box and was very easy to integrate into the existing MS Annika code. For smaller matrices it also performed decently well, however - as already
+mentioned - small matrices were not a comfort we were allowed to have. The goal was to solve problems consisting of matrices that were very large and for that Math.NET unfortunately was way
+to slow. The identification process using a simulated human proteome database and one single simulated mass spectrum would take more than 40 seconds, which is way too long considering that
+studies of that scale usually feature several hundred thousand mass spectra.
+
+The next library I took into consideration was [ALGLIB](https://www.alglib.net/). The report for this is going to be a short one: I simply couldn't get it to run. Moreover, in retrospective
+I don't even know why I even tried - even though it's an established library, it's a commercial solution and in the free version only supports single threaded computation. Big nono!
+
+The last C# native approach was using the vector implementation of the standard library in `System.Numerics.Vector`. This was doomed from the start and if only I would have read the documentation
+first, I would have saved myself the time of even trying this method. Turns out that `System.Numerics.Vector` only supports up to 4 dimensions, which is obviously way too little for our purpose.
+In conclusion, it was pretty clear that the matrix multiplication has to be done in some other language not within the .NET framework.
+
+</div>
+
+#### I love Julia...
+
+<div style={{ textAlign: 'justify' }}>
+
+I have always loved [Julia](https://julialang.org/) (the programming language), in my opinion it does a lot of things right as a programming language + it is super-fast in many ways. Julia also
+has a great reputation when it comes to numerical computing, so I was eager to give it a try for my matrix multiplication problem. Writing a matrix multiplication in Julia is also really easy,
+especially when it comes to setting up random matrices for testing purposes. It features a [standard library](https://docs.julialang.org/en/v1/stdlib/SparseArrays/) called `SparseArrays` that
+comes with implementations for sparse matrices and sparse matrix multiplication. In fact, the code for testing if Julia was fast enough for my problem at hand can be written down in six lines
+of code:
+  
+</div>
+
+```julia
+#!/usr/bin/env -S julia --color=yes --startup-file=no
+using SparseArrays
+function SpMV(rows::Int64 = 1000000, cols::Int64 = 500000)
+    M = sprand(Int8, rows, cols, 0.0001)
+    V = sprand(Float64, cols, 1, 0.002)
+    return @time M * V
+end
+```
+
+<div style={{ textAlign: 'justify' }}>
+
+Calling the function `SpMV` would initiate a random sparse matrix with `1 000 000` rows and `500 000` columns, simulating a protein database of `1 000 000` peptides. The density of this matrix
+was defined as `0.0001` because I assumed a maximum of 100 ions per peptide. The function also initiates a random sparse vector (or rather 1-dimensional sparse matrix) with `500 000` elements
+of which a fraction of `0.002` are non-zero. This vector denotes one simulated mass spectrum with 1000 peaks. The matrix multiplication would then be timed with `@time`. And don't worry, this is all
+the code I am going to share throughout the whole blog post - I just wanted to demonstrate how easy it is!
+
+Turns out that it's true what they say, Julia is actually pretty fast: The above multiplication is calculated in a fraction of a second! Julia also supports mixed compute-types and offloading
+computations to the GPU with [CUDA](https://cuda.juliagpu.org/stable/usage/array/#Sparse-arrays). Very promising!
+
+But now the bad news: Julia does unfortunately not interopt well with C#, and what I mean with that is not that it's impossible but rather that it's kinda complicated. Me no like that! I tried
+combining C# and Julia by simply calling the Julia script from C# and it would have been possible to pass data via reading and writing to intermediate files, but in this case disk IO operations
+would always have been a bottleneck and performance would suffer.
+
+Onto the next thing then…
+
+</div>
+
+#### ...but C++ does it best
+
+<div style={{ textAlign: 'justify' }}>
+
+When all else fails you turn back to your old gods: C and C++. I knew that interfacing C and C++ code with C# would work well because a lot of applications do that. So I went looking for good
+linear algebra libraries since there was no way I would implement matrix multiplication myself in C or C++ (which I also eventually did, but that is another story). My Austrian heritage prompted
+me to give [ViennaCL](https://www.iue.tuwien.ac.at/viennacl) a try, but to my disappointment I could not get that to run for my setup. Probably due to my lack of C and C++ experience. Skill issue,
+I guess. In the end it didn't even matter because I found [Eigen](https://eigen.tuxfamily.org) - or maybe it was all destiny and Eigen found me - which was a blessing in many ways. Eigen is
+open-source, has good sparse matrix support, is very fast and memory efficient but also has super nice and helpful developers and community members! Over the past year I have learned a lot about
+C++ and matrices just from the [Eigen community Discord](https://discord.gg/2SkEJGqZjR) alone and I will always be grateful to all the members who helped debugging messy code snippets and giving
+advice! Thank you, Eigen community!
+
+Eigen performed at a similar level as Julia (if not even faster) and for GPU computing I ended up going with [cuSPARSE](https://docs.nvidia.com/cuda/cusparse/index.html) directly. If I were to
+re-do the implementation today, I would maybe consider Rust instead of C++, mostly because of [faer](https://github.com/sarah-ek/faer-rs). But back then (the good old days when I was still young)
+things were not as fleshed out as they are today. However, I still am very happy with my choice and do think Eigen was and still is the best tool for the job in my case! With that settled I had
+to implement the interoperability between C# and C++ which turned out to be another adventure! 😉
+
+</div>
+
+<div align='center'>
+
+![Slide9](https://github.com/michabirklbauer/michabirklbauer.me/raw/master/cdn/blog/matrixxlms/9.jpg)
+
+</div>
+
+### The Tale of How I Accidentally Re-Invented Compressed Sparse Row Format
