@@ -1,7 +1,7 @@
 ---
 title: Solving big problems on small computers
 description: GPU-accelerated proteome-wide non-cleavable crosslink identification using sparse matrix multiplication
-date: "2024-09-08"
+date: "2024-09-12"
 url: https://doi.org/10.1101/2024.09.03.610962
 published: true
 repository:
@@ -274,7 +274,9 @@ Onto the next thing then…
 <div style={{ textAlign: 'justify' }}>
 
 When all else fails you turn back to your old gods: C and C++. I knew that interfacing C and C++ code with C# would work well because a lot of applications do that. So I went looking for good
-linear algebra libraries since there was no way I would implement matrix multiplication myself in C or C++ (which I also eventually did, but that is another story). My Austrian heritage prompted
+linear algebra libraries since there was no way I would implement matrix multiplication myself in C or C++
+([which I also eventually did](https://github.com/hgb-bin-proteomics/CandidateVectorSearch_template/blob/master/spmv.cpp),
+but that is another story). My Austrian heritage prompted
 me to give [ViennaCL](https://www.iue.tuwien.ac.at/viennacl) a try, but to my disappointment I could not get that to run for my setup. Probably due to my lack of C and C++ experience. Skill issue,
 I guess. In the end it didn't even matter because I found [Eigen](https://eigen.tuxfamily.org) - or maybe it was all destiny and Eigen found me - which was a blessing in many ways. Eigen is
 open-source, has good sparse matrix support, is very fast and memory efficient but also has super nice and helpful developers and community members! Over the past year I have learned a lot about
@@ -295,3 +297,150 @@ to implement the interoperability between C# and C++ which turned out to be anot
 </div>
 
 ### The Tale of How I Accidentally Re-Invented Compressed Sparse Row Format
+
+<div style={{ textAlign: 'justify' }}>
+
+Uncle Ben once said "With great ideas come great challenges" or something like that (I completely made that up because I love lying (not in my research though)) and he was absolutely right.
+Figuring out the matrix multiplication was only one piece (weeb reference) of the puzzle. But turns out that most of my ensuing problems could simply be solved with the
+[ostrich algorithm](https://en.wikipedia.org/wiki/Ostrich_algorithm). Poggers moment. In fact, why would I worry about the performance of mixed compute types when my existing implementation already
+worked decently well? And who cares about out-of-core operations, if someone loads up the program with more than `21 474 836` peptides maybe they just deserve that crash? I specifically stated this
+in the limitations by the way, just so you know - I am not being rude here! 😉
+
+</div>
+
+<div align='center'>
+
+![Slide10](https://github.com/michabirklbauer/michabirklbauer.me/raw/master/cdn/blog/matrixxlms/10.jpg)
+
+</div>
+
+<div style={{ textAlign: 'justify' }}>
+
+What I really needed to solve though was the interoperability between C++ and C#: In .NET that process is called marshalling. Specifically, what I needed to do is to get my matrix from my C#
+program to my C++ program and then the result back. It is possible to marshal custom data structures but it is much easier to stick to commonly available data types. So basically arrays.
+
+</div>
+
+<div align='center'>
+
+![Slide11](https://github.com/michabirklbauer/michabirklbauer.me/raw/master/cdn/blog/matrixxlms/11.jpg)
+
+</div>
+
+<div style={{ textAlign: 'justify' }}>
+
+Or rather pointers to arrays because we don't know array size at compile time. That was the point where I really learned something new about C#: Turns out that you _can_ actually do pointers
+in .NET by telling the garbage collector to pin a specific object to a certain memory address. Whaaat?!
+
+</div>
+
+<div align='center'>
+
+![Slide12](https://github.com/michabirklbauer/michabirklbauer.me/raw/master/cdn/blog/matrixxlms/12.jpg)
+
+</div>
+
+<div style={{ textAlign: 'justify' }}>
+
+So how do I transform my matrices into arrays? Just creating a flat dense array would not be possible because the size would be too big (that's what she said). Once again, the know-it-all I am,
+I went into the whole process without reading up on sparse matrix formats. To be honest, usually I am not the kind of guy that doesn't read up on things beforehand, but during this whole project
+I was so eager on doing things that it was mostly "code first, research later". I do think however that it is kind of funny that when you really put a lot of thought into something, you just end up
+with the exact same optimal solution that other people already discovered. What a surprise!
+
+My solution was to create two arrays, one would hold all column indices and the other would store information at which indices in the first array a new row starts. Heard that before? Probably not
+if you aren't into sparse matrices - but that's what's called _compressed sparse row_ format. Well, except I don't have a values array because the matrix values are calculated during matrix
+initialization. So one could argue that I even invented an optimized version of CSR format. 🤯
+
+</div>
+
+<div align='center'>
+
+![Slide13](https://github.com/michabirklbauer/michabirklbauer.me/raw/master/cdn/blog/matrixxlms/13.jpg)
+
+</div>
+
+<div style={{ textAlign: 'justify' }}>
+
+With all the technological questions answered, I just needed to address the biological questions - which took another half-year if not more. But I will save you the time and not talk about
+that - maybe one day in my dissertation. The final algorithm looked like this:
+
+</div>
+
+<div align='center'>
+
+![Slide14](https://github.com/michabirklbauer/michabirklbauer.me/raw/master/cdn/blog/matrixxlms/14.jpg)
+
+</div>
+
+<div style={{ textAlign: 'justify' }}>
+
+Explanation (as taken from the [pre-print](https://doi.org/10.1101/2024.09.03.610962)): Schematic overview of the algorithm for identification of non-cleavable crosslinks in the search engine
+MS Annika. Mass spectra and peptides arising from the _in silico_ digestion of the protein database are encoded as sparse vectors and subsequently scored by matrix multiplication. The highest
+scoring hits are considered for the identification of potential alpha peptides with the peptide search engine [MS Amanda](https://doi.org/10.1021/pr500202e). Identified alpha peptides are used
+to find complimentary beta peptides and ultimately alpha and beta peptides matching the mass spectrum's precursor mass are combined to crosslinks.
+
+</div>
+
+### The End Product - Quite Literally
+
+<div style={{ textAlign: 'justify' }}>
+
+After my "fuck around" phase it was time to enter my "find out" era: It was time to multiply some peptide matrices with some mass spectra matrices.
+
+</div>
+
+<div align='center'>
+
+![Slide15](https://github.com/michabirklbauer/michabirklbauer.me/raw/master/cdn/blog/matrixxlms/15.jpg)
+
+</div>
+
+<div style={{ textAlign: 'justify' }}>
+
+Now to make it short: It worked! It worked well, and I was - still am - actually pretty happy with the results! I - or rather we, my co-authors and I - solved a problem that has been a challenge
+for years if not decades. And the solution does not require some expensive compute cluster but runs on a normal office laptops. I think that's quite cool!
+
+I am not going to show any of the results because I have done this in detail in the publication, so if you have some biological background and are interested, you can check that out.
+
+All I can say is, I have been chasing the endorphin rush that I had when I saw that this method worked for the first time ever since! 😉
+
+</div>
+
+### Takeaways
+
+<div style={{ textAlign: 'justify' }}>
+
+I have learned a lot over the past year, but here are some of the most important things that apply to more areas than just programming which I wanted to share!
+
+</div>
+
+<div align='center'>
+
+![Slide16](https://github.com/michabirklbauer/michabirklbauer.me/raw/master/cdn/blog/matrixxlms/16.jpg)
+
+</div>
+
+### Thanks
+
+<div style={{ textAlign: 'justify' }}>
+
+Thank you for reading all this! In all seriousness though, this section belongs to all my co-authors and most importantly my supervisor and my co-workers, mostly for putting up with all the
+nerd-shit<sup>TM</sup> I have been throwing around every time I learned something new that fascinated me. Thanks for tolerating me! (And
+supporting me in all situations and moods, love you guys lots! ♥️)
+
+</div>
+
+### Further Links
+
+- Pre-Print:  
+  [doi.org/10.1101/2024.09.03.610962](https://doi.org/10.1101/2024.09.03.610962)
+- MS Annika:  
+  [github.com/hgb-bin-proteomics/MSAnnika](https://github.com/hgb-bin-proteomics/MSAnnika)
+- CandidateSearch:  
+  [github.com/hgb-bin-proteomics/CandidateSearch](https://github.com/hgb-bin-proteomics/CandidateSearch)
+- CandidateVectorSearch:  
+  [github.com/hgb-bin-proteomics/CandidateVectorSearch](https://github.com/hgb-bin-proteomics/CandidateVectorSearch)
+- Eigen:  
+  [eigen.tuxfamily.org](https://eigen.tuxfamily.org)
+- faer:  
+  [github.com/sarah-ek/faer-rs](https://github.com/sarah-ek/faer-rs)
